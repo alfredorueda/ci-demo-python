@@ -43,10 +43,11 @@ All 15 tests run in well under a second — no Docker, no network, no database.
 5. Fix the code, push again — the check turns green and the PR becomes
    mergeable.
 
-See [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) for the full, illustrated
-walkthrough — the live run-through above, explained step by step with
-diagrams, plus a follow-up exercise to repeat the whole thing on your own
-fork afterwards.
+- [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — condensed, copy-paste-ready run sheet
+  for the live walkthrough above.
+- [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) — the same walkthrough fully
+  explained, with diagrams, plus a follow-up exercise to repeat the whole
+  thing on your own fork afterwards.
 
 ## License
 
