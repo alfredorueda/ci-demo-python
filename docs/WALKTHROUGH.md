@@ -5,6 +5,9 @@ looks like from the moment it's pushed to the moment GitHub stops it from
 reaching `main`, and a follow-up exercise you can repeat on your own
 afterwards, on your own copy of the repository.
 
+Looking for a condensed, copy-paste-ready version of section 5 instead of
+the fully explained one below? See [DEMO_SCRIPT.md](../DEMO_SCRIPT.md).
+
 ---
 
 ## 1. What this walkthrough shows
