@@ -1,0 +1,539 @@
+# Continuous Integration Walkthrough
+
+This document is the detailed, step-by-step guide to the live demo built on
+this repository. It has two audiences:
+
+- **Part A — For the instructor**, running the live demo in front of the
+  room.
+- **Part B — For students**, to reproduce the whole thing yourself, at your
+  own pace, after the session.
+
+If you only need a quick cheat-sheet while presenting, see
+[`DEMO_SCRIPT.md`](../DEMO_SCRIPT.md) in the repository root — this document
+is the longer, fully-explained version of the same demo.
+
+---
+
+## 1. What this demo is actually showing
+
+Underneath the stock-portfolio theme, this repository demonstrates four
+ideas that show up in every professional software team:
+
+1. **Automated tests** catch mistakes without a human having to notice them.
+2. **A CI pipeline** (GitHub Actions, in this case) runs those tests
+   automatically every time code is pushed — nobody has to remember to run
+   them by hand.
+3. **A pull request (PR)** is the normal way to propose a change to shared
+   code, and it's the natural place to show the result of that automated
+   check.
+4. **A branch protection rule** turns "please don't merge broken code" from
+   a polite request into something the platform enforces — the *Merge*
+   button is physically disabled while the check is red.
+
+None of this depends on the specific business logic in this repo. The
+"stock portfolio" domain is just something concrete and small enough to
+reason about; it could be a shopping cart, a payroll calculation, anything.
+
+The loop you'll see, over and over, looks like this:
+
+```mermaid
+flowchart TD
+    A["Edit code on a branch"] --> B["Run pytest locally"]
+    B -- red --> A
+    B -- green --> C["git push"]
+    C --> D["Open a pull request"]
+    D --> E["GitHub Actions runs the CI workflow"]
+    E -- fails --> F["Merge button disabled"]
+    F --> A
+    E -- passes --> G["Merge button enabled"]
+    G --> H["Merge into main"]
+
+    style B fill:#fff3cd,stroke:#b38600
+    style E fill:#fff3cd,stroke:#b38600
+    style F fill:#f8d7da,stroke:#a12622
+    style G fill:#d4edda,stroke:#276b35
+```
+
+---
+
+## 2. The domain model, in 60 seconds
+
+Two classes, no framework, no database:
+
+- **`Money`** (`portfolio_domain/money.py`) — an immutable amount of money,
+  always rounded to 2 decimals. `Money.of(10).add(Money.of("2.50"))` gives
+  you a new `Money` worth `12.50`.
+- **`Portfolio`** (`portfolio_domain/portfolio.py`) — holds a cash balance
+  and stock holdings. `buy(ticker, quantity, price)` spends cash and records
+  shares; `sell(ticker, quantity, price)` releases shares, adds cash back,
+  and returns the realized gain, consuming the oldest purchased shares
+  first (FIFO — first in, first out).
+
+Fifteen tests in `tests/` pin down this behavior: what a normal purchase
+does, what happens if you try to buy more than you can afford, what happens
+if you try to sell more shares than you own, and so on. You don't need to
+read every test to follow the demo — just know that they run in
+**0.02 seconds**, because there is no database, no network call, and no
+web server involved. That speed is what makes the rest of this walkthrough
+possible.
+
+---
+
+## 3. Prerequisites
+
+| Tool | Needed by | Notes |
+|---|---|---|
+| Python 3.9+ | Everyone | Check with `python3 --version`. Any recent version works. |
+| Git | Everyone | Check with `git --version`. |
+| VS Code | Everyone | With the built-in terminal; the Python extension is nice to have but not required for this demo. |
+| A GitHub account | Students (Part B only) | Needed to fork the repository and open your own pull request. Not needed just to watch the instructor demo. |
+| [GitHub CLI](https://cli.github.com/) (`gh`) | Instructor (optional) | Makes creating the PR from the terminal faster (`gh pr create`). Not required — the GitHub website works just as well. |
+
+---
+
+## 4. Repository tour
+
+```
+ci-demo-python/
+  portfolio_domain/
+    money.py        Money value object
+    portfolio.py     Portfolio: deposit / buy / sell, FIFO lots
+    exceptions.py    InsufficientFundsError, InsufficientSharesError
+  tests/
+    test_money.py
+    test_portfolio.py
+  .github/workflows/ci.yml   The pipeline definition itself
+  requirements.txt            Just pytest
+  pyproject.toml              Tells pytest where the tests and code live
+```
+
+The pipeline is defined in `.github/workflows/ci.yml`. Open it — it is
+short enough to read end to end:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run domain tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest -v
+```
+
+In plain English: *"Every time someone pushes to `main`, or opens/updates a
+pull request targeting `main`, spin up a fresh Ubuntu machine, check out the
+code, install Python 3.12, install `pytest`, and run the test suite."* That
+is the entire pipeline. No deployment step, no infrastructure — this is CI
+(Continuous **Integration**), not CD (Continuous **Deployment**).
+
+```mermaid
+flowchart TD
+    T1["push to main"] --> J["Job: test\nshown on PRs as check: Run domain tests"]
+    T2["pull_request targeting main"] --> J
+    J --> S1["1. Checkout code"]
+    S1 --> S2["2. Set up Python 3.12"]
+    S2 --> S3["3. pip install -r requirements.txt"]
+    S3 --> S4["4. pytest -v"]
+    S4 --> R{"Result"}
+    R -- all pass --> OK["Check: success"]
+    R -- any fail --> KO["Check: failure"]
+```
+
+The job is named `Run domain tests`. That exact name is what a **branch
+protection rule** on `main` requires to pass before a pull request can be
+merged. You can see the rule at:
+
+```
+https://github.com/<owner>/ci-demo-python/settings/branches
+```
+
+It requires:
+- The `Run domain tests` check to pass.
+- The branch to be up to date with `main` before merging (this matters —
+  see the troubleshooting section if a check looks green but the PR still
+  won't merge).
+- This applies to **everyone**, including repository administrators — there
+  is no bypass.
+
+---
+
+## 5. Part A — Instructor-led live demo (~10–12 minutes)
+
+**Audience assumption:** no prior GitHub Actions experience. This is a
+demo, not a hands-on lab — narrate what you're doing and let the room watch
+the pull request change state on the shared screen.
+
+Here's the mental model to put up before you start typing — three actors,
+one round trip:
+
+```mermaid
+sequenceDiagram
+    actor You as You (VS Code)
+    participant GH as GitHub (the PR page)
+    participant CI as Actions runner
+
+    You->>GH: git push (branch) + open pull request
+    GH->>CI: trigger the "CI" workflow
+    activate CI
+    CI->>CI: checkout, setup Python, pip install, pytest
+    CI-->>GH: report check "Run domain tests" (pass / fail)
+    deactivate CI
+    GH-->>You: PR page updates: check status + Merge button state
+
+    alt check fails
+        Note over GH,You: Merge button disabled
+    else check passes
+        Note over GH,You: Merge button enabled
+    end
+```
+
+The only thing that changes between a failing run and a passing run is
+whether that last message back to GitHub says "pass" or "fail" — everything
+else in the diagram happens identically either way.
+
+### 5.0 Before the session starts
+
+- [ ] Open this repository in VS Code, on the `main` branch.
+- [ ] Open a terminal inside VS Code.
+- [ ] Open the repository's **Actions** tab in a browser tab, so you can
+      switch to it quickly.
+- [ ] Confirm `main` is green:
+  ```bash
+  git checkout main
+  git pull
+  pytest -v
+  ```
+  You should see `15 passed` in a fraction of a second.
+
+### 5.1 Show the baseline (green) — 1 minute
+
+Run the test suite once, live, before touching anything:
+
+```bash
+pytest -v
+```
+
+Say out loud something like: *"No Docker, no database, no network call —
+that's why this takes 20 milliseconds instead of two minutes. That speed is
+what makes the rest of this demo possible."*
+
+### 5.2 Create a branch and introduce a bug — 2 minutes
+
+```bash
+git checkout -b break-the-build
+```
+
+Open `portfolio_domain/portfolio.py`. Find the `buy` method:
+
+```python
+def buy(self, ticker: str, quantity: int, price: Money) -> None:
+    cost = price.multiply(quantity)
+    if cost.amount > self._cash.amount:
+        raise InsufficientFundsError(
+            f"Cannot buy {quantity} {ticker}: cost {cost} exceeds cash balance {self._cash}"
+        )
+    self._cash = self._cash.subtract(cost)          # <-- comment out this line
+    self._lots.setdefault(ticker, deque()).append(_Lot(quantity, price))
+```
+
+Comment out the highlighted line, so buying shares no longer deducts the
+cost from the cash balance — a very relatable, realistic bug ("I forgot to
+update the balance").
+
+Run the tests locally, **before pushing anything**:
+
+```bash
+pytest -v
+```
+
+Expected result: `2 failed, 13 passed`. The two failures are
+`test_buy_deducts_cash_balance` and `test_sell_increases_cash_balance`.
+Good talking point: *"One small bug broke two different behaviors — this is
+why we test more than one scenario, not just a single happy path."*
+
+### 5.3 Push the branch and open a pull request — 2 minutes
+
+```bash
+git add -A
+git commit -m "Introduce a bug on purpose for the CI demo"
+git push -u origin break-the-build
+```
+
+Open a pull request against `main`:
+
+- Via the browser: click the "Compare & pull request" banner GitHub shows
+  after the push, or go to the repository's **Pull requests** tab → **New
+  pull request**.
+- Via the terminal, if `gh` is installed: `gh pr create --fill`.
+
+Talking point while the PR page loads: *"This is the moment where, in a
+real team, this code would be shared for review. Notice we did not push
+straight to `main` — the branch protection rule wouldn't have allowed it
+anyway."*
+
+### 5.4 Watch the check fail — 2 minutes
+
+Switch to the browser, on the pull request page. The check goes through
+three states, and only one of them lets the PR merge:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Queued
+    Queued --> InProgress: runner picks it up
+    InProgress --> Success: pytest exits 0
+    InProgress --> Failure: pytest exits non-zero
+    Success --> [*]: Merge button enabled
+    Failure --> [*]: Merge button disabled
+
+    classDef fail fill:#f8d7da,stroke:#a12622
+    classDef pass fill:#d4edda,stroke:#276b35
+    class Failure fail
+    class Success pass
+```
+
+- Right after opening the PR, the check shows a **yellow dot** (queued /
+  in progress) next to `Run domain tests`. This usually takes 10–20
+  seconds — narrate instead of waiting in silence ("GitHub is spinning up a
+  fresh virtual machine for this right now").
+- Refresh. The check turns into a **red ✕**.
+- Click **Details** next to the failed check to open the Actions log. Show
+  the room the `pytest` output — the exact same assertion errors they just
+  saw in the terminal. This is an important point: *"CI didn't find
+  something new — it just proved, automatically and for everyone to see,
+  what we already saw on our own machine."*
+- Scroll to the **Merge** button at the bottom of the PR. It is greyed out,
+  with a message like *"Merging is blocked — Required statuses must pass
+  before merging"*. Point at it directly: *"This isn't a suggestion. Nobody
+  — not even a repository admin — can merge this until the check is
+  green."*
+
+### 5.5 Fix it and watch it go green — 2 minutes
+
+Back in VS Code, uncomment the line you disabled:
+
+```python
+self._cash = self._cash.subtract(cost)
+```
+
+```bash
+pytest -v          # confirm 15 passed, locally, before pushing
+git add -A
+git commit -m "Fix the cash balance bug"
+git push
+```
+
+Switch back to the browser and refresh the PR page:
+
+- The check goes back to yellow, then green.
+- The **Merge** button becomes active.
+- Merge it live, if you have time (`Squash and merge` is a fine default).
+
+### 5.6 Wrap-up talking points — 1–2 minutes
+
+- The full loop you just watched — write code, get automatic feedback, fix,
+  merge — took a few minutes **only because the test suite is fast and has
+  no infrastructure to spin up.** A slow suite (databases, containers,
+  external services) trains people to stop waiting for it, which is exactly
+  how bugs like this one slip into `main` in real projects.
+- Branch protection turns *"please run the tests before merging"* — a
+  request people forget under deadline pressure — into *"you cannot merge
+  until they pass"* — a rule the platform enforces, with no exceptions.
+- Everything you just watched is defined as code, in
+  `.github/workflows/ci.yml`. It is reviewed, versioned, and changed
+  through pull requests exactly like the application code it tests.
+
+---
+
+## 6. Part B — Student self-paced exercise (do this after the session)
+
+This section is for you to run entirely on your own, at your own machine,
+whenever you have 15–20 minutes. It reproduces everything the instructor
+just showed, but on your own copy of the repository, so nothing you do can
+affect anyone else.
+
+### 6.1 Fork the repository
+
+1. Go to `https://github.com/<owner>/ci-demo-python`.
+2. Click **Fork** (top-right corner). This creates a full copy of the
+   repository under your own GitHub account, e.g.
+   `https://github.com/<your-username>/ci-demo-python`.
+
+### 6.2 Clone your fork
+
+Open a terminal (or the VS Code terminal) and run, replacing
+`<your-username>`:
+
+```bash
+git clone https://github.com/<your-username>/ci-demo-python.git
+cd ci-demo-python
+```
+
+### 6.3 Set up your environment and confirm the baseline is green
+
+macOS / Linux:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pytest -v
+```
+
+Windows (PowerShell):
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pytest -v
+```
+
+You should see `15 passed` in well under a second. If you don't, see the
+[Troubleshooting](#8-troubleshooting--faq) section before continuing.
+
+### 6.4 Turn on branch protection on your fork
+
+Forking copies the code, but **not** the branch protection rule — you need
+to set that up yourself to see the "merge blocked" behavior on your own
+copy:
+
+1. On your fork, go to **Settings → Branches**.
+2. Click **Add branch protection rule** (or **Add rule**).
+3. Under "Branch name pattern", type `main`.
+4. Enable **Require status checks to pass before merging**.
+5. In the search box, find and select **Run domain tests**. If it doesn't
+   appear yet, push any commit first (a check only becomes searchable
+   after it has run at least once on your fork) and come back to this step.
+6. Enable **Do not allow bypassing the above settings** (this is the
+   equivalent of "include administrators" — it makes the rule apply to you
+   too, not just to other contributors).
+7. Click **Create** (or **Save changes**).
+
+### 6.5 Repeat the break → PR → fix loop yourself
+
+Follow the exact same steps as [section 5.2 through 5.5](#52-create-a-branch-and-introduce-a-bug--2-minutes)
+above, on your own fork:
+
+1. `git checkout -b break-the-build`
+2. Comment out the cash-deduction line in `portfolio_domain/portfolio.py`.
+3. Run `pytest -v` locally — confirm 2 failures.
+4. Commit, push, open a pull request against **your own fork's** `main`.
+5. Watch the check fail, look at the log, notice the disabled **Merge**
+   button.
+6. Uncomment the line, run `pytest -v` locally to confirm 15 pass, commit,
+   push again.
+7. Watch the check turn green and merge the pull request.
+
+### 6.6 A few things to try on your own, once the basic loop works
+
+These aren't required, but they build real intuition:
+
+- **Break a different test on purpose.** Try changing the FIFO order in
+  `sell` (swap `lots[0]` for `lots[-1]`) and see which test catches it.
+- **Add a brand new test.** Write a test for a scenario that isn't covered
+  yet — e.g. selling shares from three different lots in one call — and
+  watch it run automatically on your next push, with zero extra
+  configuration.
+- **Try to push directly to your fork's `main`.** With branch protection
+  on, even a direct push (not through a PR) should be rejected. This is
+  the same rule at work from a different angle.
+- **Temporarily disable the branch protection rule** (Settings → Branches
+  → delete or edit the rule), then repeat the broken-test scenario. Notice
+  the check still turns red — but now the **Merge** button stays active.
+  This isolates the two separate ideas: *running tests automatically* and
+  *enforcing that they must pass* are two different features, and you just
+  turned one of them off.
+
+---
+
+## 7. Glossary (for total beginners)
+
+| Term | Meaning here |
+|---|---|
+| **Repository (repo)** | The project's folder, tracked by Git, hosted on GitHub. |
+| **Commit** | A saved snapshot of changes, with a message describing them. |
+| **Branch** | An independent line of work, starting from some point in the project's history — lets you make changes without touching `main` until you're ready. |
+| **Pull request (PR)** | A request to merge one branch into another (usually into `main`), with a page on GitHub where the diff, comments, and checks are shown. |
+| **CI (Continuous Integration)** | Automatically building and testing every change, on every push, instead of relying on someone remembering to do it. |
+| **Workflow** | A pipeline definition file, here `.github/workflows/ci.yml`. |
+| **Job / step** | A workflow is made of jobs; each job is made of steps run in order. This repo has one job (`test`) with four steps. |
+| **Status check** | The pass/fail result of a job, shown directly on a pull request. |
+| **Branch protection rule** | A GitHub setting on a specific branch (here, `main`) that can require checks to pass, forbid force-pushes, etc., before a change is allowed in. |
+| **Merge blocked** | The state where a pull request cannot be merged because a required condition (here, the `Run domain tests` check) hasn't been satisfied yet. |
+
+---
+
+## 8. Troubleshooting / FAQ
+
+**The check has been "Queued" for a while.**
+GitHub-hosted runners can take anywhere from a few seconds to about a
+minute to start, especially at busy times. Refresh the page; there's
+nothing to fix.
+
+**The check is green, but the Merge button is still disabled.**
+This branch protection rule uses a *strict* status check, meaning your
+branch must also be up to date with the latest `main` before merging (not
+just passing on its own). GitHub will show an **Update branch** button on
+the PR — click it, wait for the check to re-run on the updated code, and
+the Merge button will become available.
+
+**`pytest` isn't found.**
+Your virtual environment probably isn't active. Re-run the `source
+.venv/bin/activate` (macOS/Linux) or `.venv\Scripts\Activate.ps1`
+(Windows) command from section 6.3, then try again. You'll know it worked
+because your terminal prompt will show `(.venv)` at the start of the line.
+
+**The workflow never runs at all after I push.**
+Check that you pushed to a branch and opened a PR **against `main`** (or
+pushed directly to `main`) — the workflow only triggers on those events (see
+the `on:` block in `.github/workflows/ci.yml`). Also double-check the file
+is still at exactly `.github/workflows/ci.yml` — GitHub Actions only looks
+in that folder.
+
+**I get a permission / rejected push when pushing straight to `main`.**
+That's the branch protection rule working as intended — direct pushes to a
+protected branch are exactly what it's designed to stop. Create a branch
+and open a pull request instead (see section 6.5).
+
+---
+
+## 9. Where to go from here (optional, beyond this demo)
+
+This repository intentionally keeps everything at one speed — pure domain
+logic, no infrastructure. In a real project, you typically end up with two
+tiers of tests: fast, infrastructure-free tests like these, and slower
+integration tests that talk to a real database or API. A common next step
+is a **staged pipeline**: a fast job that runs on every single push for
+instant feedback, followed by a slower job — using `needs:` in the workflow
+file — that only runs once the fast one has passed, or only on merges into
+`main`.
+
+```mermaid
+flowchart LR
+    subgraph demo["This demo — single fast stage"]
+        direction LR
+        A1["Push"] --> A2["Domain tests\n~0.02s, no infra"]
+    end
+
+    subgraph real["A larger real-world project — staged"]
+        direction LR
+        B1["Push"] --> B2["Fast domain tests\nseconds, no infra"]
+        B2 -- pass --> B3["Slower integration tests\ndatabases, HTTP APIs, containers"]
+    end
+```
+
+If you want to see that pattern applied to a much larger, production-shaped
+codebase, ask your instructor about the companion Java project this demo
+was distilled from.

@@ -43,8 +43,12 @@ All 15 tests run in well under a second — no Docker, no network, no database.
 5. Fix the code, push again — the check turns green and the PR becomes
    mergeable.
 
-See [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for the exact step-by-step used in the
-training session.
+- [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — short cheat-sheet for the instructor to
+  follow while presenting.
+- [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) — the full, illustrated,
+  step-by-step guide (with diagrams), for both the instructor and for
+  students who want to reproduce the whole exercise on their own fork
+  afterwards.
 
 ## License
 
