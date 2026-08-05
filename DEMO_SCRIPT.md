@@ -5,6 +5,10 @@ content as [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md), formatted for
 scanning quickly while presenting or following along. About 10 minutes
 end to end.
 
+\* **On a corporate network?** If GitHub is blocked, see [Corporate
+network access](#corporate-network-access) at the very end of this
+document before starting.
+
 ## Before starting
 
 - [ ] **Fork the repo, then clone your fork** — not this one. Cloning
@@ -134,3 +138,15 @@ For every step explained in full, with diagrams, see
 [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md). To repeat this same exercise
 on your own fork afterwards, see its
 ["Try it yourself"](docs/WALKTHROUGH.md#6-try-it-yourself) section.
+
+---
+
+## Corporate network access
+
+If GitHub is blocked on your corporate network, `git clone`, `git push`,
+and friends may fail with a connection or timeout error. This is a
+network-level restriction, unrelated to this repository or this
+walkthrough — check with your organization: many companies already
+document the exact proxy configuration needed for `git`/GitHub in an
+internal channel (for example, shared over Teams). Ask your IT/network
+team or your training organizer if you're not sure where to find it.
