@@ -53,6 +53,14 @@ what makes the rest of this run fast.
 
 ## 2. Branch, then break the build on purpose (~2 min)
 
+> ⚠️ **STOP — switch branch before editing or committing anything.**
+> `main` is protected: no direct pushes, no exceptions, not even for
+> repository admins. Run the command below *first*, before touching
+> `portfolio_domain/portfolio.py`. If you forget and commit on `main` by
+> mistake, nothing is lost — see "Committed straight to `main` by
+> mistake?" under ["If something stalls"](#if-something-stalls) — but
+> saving yourself that detour starts here:
+
 ```bash
 git checkout -b break-the-build
 ```
