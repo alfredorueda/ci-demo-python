@@ -79,7 +79,7 @@ possible.
 
 | Tool | Notes |
 |---|---|
-| Python 3.9+ | Check with `python3 --version`. Any recent version works. |
+| Python 3.9+ | Check with `python3 --version`. Any recent version works. `pytest` itself is **not** expected to be installed already — it comes from `requirements.txt` in [6.3](#63-set-up-the-environment-and-confirm-the-baseline-is-green). |
 | Git | Check with `git --version`. |
 | VS Code | The built-in terminal is all that's needed; the Python extension is nice to have but not required. |
 | A GitHub account | Needed before section 5: you'll fork the repo (see [6.1](#61-fork-the-repository)) and open pull requests from your own copy — you don't have push access to this repository directly. |
@@ -175,11 +175,15 @@ It requires:
 
 ## 5. Live walkthrough: breaking the build on purpose
 
-> **Before continuing:** fork this repository and clone your fork — see
-> [6.1 Fork the repository](#61-fork-the-repository) and
-> [6.2 Clone your fork](#62-clone-your-fork) below — then run every command
-> in this section inside your fork. Cloning `alfredorueda/ci-demo-python`
-> directly won't let you push a branch or open a pull request.
+> **Before continuing:** fork this repository, clone your fork, and install
+> its dependencies — see [6.1 Fork the repository](#61-fork-the-repository),
+> [6.2 Clone your fork](#62-clone-your-fork), and
+> [6.3 Set up the environment](#63-set-up-the-environment-and-confirm-the-baseline-is-green)
+> below — then run every command in this section inside your fork, with
+> the virtual environment active. Cloning `alfredorueda/ci-demo-python`
+> directly won't let you push a branch or open a pull request, and `pytest`
+> isn't installed anywhere until 6.3's `pip install -r requirements.txt`
+> runs.
 
 The best way to understand a CI pipeline is to watch it catch something.
 Here's the mental model before diving in — three actors, one round trip:
@@ -357,8 +361,9 @@ reasonable default) closes the loop.
 
 This section reproduces everything above on your own copy of the
 repository, so nothing here can affect anyone else. It takes about
-15–20 minutes. Already forked and cloned before section 5? Skip ahead to
-[6.3](#63-set-up-the-environment-and-confirm-the-baseline-is-green).
+15–20 minutes. Already forked, cloned, and set up the environment before
+section 5? Skip ahead to
+[6.4](#64-turn-on-branch-protection-on-the-fork).
 
 ### 6.1 Fork the repository
 
