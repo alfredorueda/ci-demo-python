@@ -82,7 +82,7 @@ possible.
 | Python 3.9+ | Check with `python3 --version`. Any recent version works. |
 | Git | Check with `git --version`. |
 | VS Code | The built-in terminal is all that's needed; the Python extension is nice to have but not required. |
-| A GitHub account | Only needed for the ["Try it yourself"](#6-try-it-yourself) section — forking the repo and opening your own pull request. |
+| A GitHub account | Needed before section 5: you'll fork the repo (see [6.1](#61-fork-the-repository)) and open pull requests from your own copy — you don't have push access to this repository directly. |
 | [GitHub CLI](https://cli.github.com/) (`gh`) | Optional. Speeds up creating a pull request from the terminal (`gh pr create`) instead of the website. |
 
 ---
@@ -174,6 +174,12 @@ It requires:
 ---
 
 ## 5. Live walkthrough: breaking the build on purpose
+
+> **Before continuing:** fork this repository and clone your fork — see
+> [6.1 Fork the repository](#61-fork-the-repository) and
+> [6.2 Clone your fork](#62-clone-your-fork) below — then run every command
+> in this section inside your fork. Cloning `alfredorueda/ci-demo-python`
+> directly won't let you push a branch or open a pull request.
 
 The best way to understand a CI pipeline is to watch it catch something.
 Here's the mental model before diving in — three actors, one round trip:
@@ -351,7 +357,8 @@ reasonable default) closes the loop.
 
 This section reproduces everything above on your own copy of the
 repository, so nothing here can affect anyone else. It takes about
-15–20 minutes.
+15–20 minutes. Already forked and cloned before section 5? Skip ahead to
+[6.3](#63-set-up-the-environment-and-confirm-the-baseline-is-green).
 
 ### 6.1 Fork the repository
 
