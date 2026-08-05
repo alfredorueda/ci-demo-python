@@ -511,6 +511,34 @@ That's the branch protection rule working as intended — direct pushes to a
 protected branch are exactly what it's designed to stop. Create a branch
 and open a pull request instead (see section 6.5).
 
+This is worth sitting with for a moment, because it's easy to read the
+whole exercise in section 5 as being about a *deliberate* bad change —
+comment out a line on purpose, watch it get caught — and conclude the
+protection exists for hypothetical bad actors. In practice, the far more
+common trigger is far less dramatic: someone starts editing before
+remembering to create a branch, especially mid-flow or under time
+pressure, and only notices when `git push` refuses to cooperate. The rule
+doesn't distinguish between the two cases, and that's the feature, not a
+limitation — it doesn't ask *why* a change is heading to `main` without
+review, it just requires the same PR either way.
+
+Nothing is lost when this happens; the rejected `push` means the commit
+only ever reached the local repository, never `origin`:
+
+```bash
+git branch break-the-build      # snapshot the current commit onto a new branch
+git reset --hard origin/main    # bring local main back in sync with the remote
+git checkout break-the-build    # keep working from here
+```
+
+`git branch <name>` creates a new branch pointing at whatever commit
+`main` is on right now, without moving `main` itself — so the work isn't
+discarded, it's just relabeled. `git reset --hard origin/main` then moves
+the local `main` branch back to match the remote exactly, discarding the
+commit *from `main`* (not from `break-the-build`, which now also points
+at it). From there, section 5.3 onward applies unchanged: push the
+branch, open a pull request, let the check run.
+
 ---
 
 ## 9. Where to go from here (optional, beyond this walkthrough)
