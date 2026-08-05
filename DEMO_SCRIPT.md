@@ -18,6 +18,16 @@ end to end.
          cd ci-demo-python
          ```
       Every command below runs inside your fork.
+- [ ] **Install dependencies** — `pytest` is not installed by default,
+      it comes from `requirements.txt`:
+      ```bash
+      python3 -m venv .venv
+      source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
+      pip install -r requirements.txt
+      ```
+      Confirmed it worked if the terminal prompt now starts with
+      `(.venv)` and `pytest --version` prints a version instead of
+      "command not found".
 - [ ] On `main`, terminal open, the repository's **Actions** tab open in a
       browser tab.
 - [ ] Confirm the baseline:
@@ -113,6 +123,10 @@ Refresh the PR: check turns green → **Merge** button active → merge
   that gap is normal, not a failure.
 - Branch protection can be turned off from **Settings → Branches** if
   `main` needs to be unblocked for any reason.
+- `pytest: command not found`? The virtual environment isn't active —
+  re-run `source .venv/bin/activate` (macOS/Linux) or
+  `.venv\Scripts\Activate.ps1` (Windows) from the "Install dependencies"
+  step above.
 
 ---
 
