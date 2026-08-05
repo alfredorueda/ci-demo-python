@@ -127,6 +127,19 @@ Refresh the PR: check turns green → **Merge** button active → merge
   that gap is normal, not a failure.
 - Branch protection can be turned off from **Settings → Branches** if
   `main` needs to be unblocked for any reason.
+- **Committed straight to `main` by mistake** (forgot to branch first,
+  under time pressure — it happens to everyone)? Nothing is lost:
+  branch protection blocked the *push*, so the commit only ever existed
+  locally. Move it to a branch instead of losing it:
+  ```bash
+  git branch break-the-build      # snapshot the commit onto a new branch
+  git reset --hard origin/main    # bring local main back in sync
+  git checkout break-the-build    # keep working from here
+  ```
+  Then continue from step 3 (push the branch, open a PR) as normal. This
+  is the same protection at work as the rest of this document, just
+  catching a slip instead of a deliberate bad change — that's the point:
+  it doesn't ask why the push happened, it just requires a PR either way.
 - `pytest: command not found`? The virtual environment isn't active —
   re-run `source .venv/bin/activate` (macOS/Linux) or
   `.venv\Scripts\Activate.ps1` (Windows) from the "Install dependencies"
