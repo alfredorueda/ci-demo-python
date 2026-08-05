@@ -77,7 +77,7 @@ self._cash = self._cash.subtract(cost)
 ```
 
 ```bash
-pytest -v          # confirm 15 passed locally first
+pytest -v
 git add -A
 git commit -m "Fix the cash balance bug"
 git push
