@@ -30,6 +30,9 @@ None of this depends on the specific business logic in this repo. The
 "stock portfolio" domain is just something concrete and small enough to
 reason about; it could be a shopping cart, a payroll calculation, anything.
 
+A natural follow-up question: what stops someone from weakening the
+*tests* instead of fixing the *code*? Section 10 addresses it directly.
+
 The loop we'll walk through, over and over, looks like this:
 
 ```mermaid
@@ -536,3 +539,98 @@ flowchart LR
 
 The same idea, applied to a much larger, production-shaped codebase, is
 worth exploring once this smaller version feels familiar.
+
+---
+
+## 10. Why a passing check isn't the whole guarantee: protecting test integrity
+
+A question follows naturally from everything above: branch protection
+guarantees that `Run domain tests` passes before a pull request can be
+merged — but what stops a contributor from weakening or deleting the very
+tests that check runs, inside the same pull request that introduces the
+bug? If the tests themselves can be edited freely, "the check is green"
+and "the code is correct" are not actually the same statement.
+
+This is a well-documented limitation of CI-based gatekeeping in general,
+not a flaw specific to this repository: an automated check can only
+verify that the code satisfies the rules currently encoded in the test
+suite. It cannot verify that those rules are still the right ones.
+Engineering organizations address this gap with a combination of
+practices, layered on top of — not instead of — the CI mechanism this
+walkthrough demonstrates.
+
+### 10.1 Mandatory human review
+
+Automated status checks and human review answer different questions, and
+production-grade branch protection requires both:
+
+- **Require a pull request before merging**, with **required approving
+  review count ≥ 1**, ensures at least one person reads the diff, not
+  just the CI result.
+- **Dismiss stale pull request approvals when new commits are pushed**
+  revokes a prior approval the moment new commits — including ones that
+  touch the test files — are pushed, forcing a fresh look.
+- Disallowing self-approval prevents the author of a change from also
+  being its only reviewer.
+
+None of this is visible from the check status alone; it is configured
+separately, under **Settings → Branches**, alongside the *Require status
+checks to pass before merging* rule already covered in section 3.
+
+### 10.2 CODEOWNERS: routing test changes to the right reviewer
+
+A `CODEOWNERS` file lets a repository designate specific reviewers for
+specific paths:
+
+```
+# CODEOWNERS
+/tests/            @qa-team
+```
+
+Combined with the branch protection option **Require review from Code
+Owners**, this guarantees that *any* pull request touching a test file
+must be approved by someone from the designated team — typically QA or a
+senior engineer — regardless of who approves the rest of the change. This
+is the most direct, widely used answer to "how do we stop people from
+quietly weakening the tests?": it does not prevent the edit, but it
+guarantees a specific, accountable reviewer sees it before the change can
+reach `main`.
+
+### 10.3 Coverage and mutation testing as an automated gate
+
+Human review does not scale perfectly, so many organizations back it with
+automated signals that are harder to game than "the suite passes":
+
+- **Code coverage** (`coverage.py`, in a Python project like this one)
+  can fail the build if a pull request lowers the covered-line percentage
+  below a threshold. This is a coarse signal — a test can assert nothing
+  meaningful and still count toward coverage — but it reliably catches
+  wholesale deletion of test files.
+- **Mutation testing** (`mutmut`, `cosmic-ray`) is a stronger, more
+  direct answer to this exact problem. It automatically introduces small,
+  deliberate bugs ("mutants") into the production code and re-runs the
+  suite against each one; a healthy suite should fail on most mutants. A
+  suite that has been weakened — assertions removed, edge cases deleted —
+  lets a much larger share of mutants survive, which mutation testing
+  reports as a falling *mutation score*, even while code coverage stays
+  unchanged.
+
+### 10.4 Static rules against common tampering patterns
+
+A lightweight, additional CI step can scan a diff for patterns that
+usually indicate a test was disabled rather than fixed: `@pytest.mark.skip`
+decorators, a shrinking total test count relative to `main` without an
+explicit justification label, or an assertion-free test body. This does
+not replace review, but it turns an easy-to-miss diff detail into a hard
+build failure.
+
+### 10.5 What this means for the mechanism shown in this walkthrough
+
+The branch protection rule demonstrated throughout this document is a
+necessary layer, not a complete one. It guarantees that the currently
+defined tests pass before a change reaches `main` — a real and valuable
+guarantee, and the starting point for everything above. Making sure those
+tests stay meaningful is a separate, complementary problem, solved
+primarily through mandatory human review (`CODEOWNERS` plus required
+approvals on test paths) and, in more mature setups, automated integrity
+signals such as mutation testing. Neither one substitutes for the other.
