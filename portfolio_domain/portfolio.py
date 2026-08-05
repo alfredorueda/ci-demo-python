@@ -41,6 +41,7 @@ class Portfolio:
             raise InsufficientFundsError(
                 f"Cannot buy {quantity} {ticker}: cost {cost} exceeds cash balance {self._cash}"
             )
+        self._cash = self._cash.subtract(cost)
         self._lots.setdefault(ticker, deque()).append(_Lot(quantity, price))
 
     def sell(self, ticker: str, quantity: int, price: Money) -> Money:
