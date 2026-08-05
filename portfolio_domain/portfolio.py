@@ -53,7 +53,7 @@ class Portfolio:
             )
 
         lots = self._lots[ticker]
-        remaining_to_sell = quantity
+        remaining_to_sell = 0
         cost_basis = Money.of(0)
 
         while remaining_to_sell > 0:
